@@ -16,6 +16,7 @@ extern int errno;
 #define EFAULT 14
 #define EBUSY 16
 #define EEXIST 17
+#define EXDEV 18
 #define ENOTDIR 20
 #define EISDIR 21
 #define EINVAL 22
@@ -29,6 +30,7 @@ extern int errno;
 #define ENAMETOOLONG 36
 #define ENOSYS 38
 #define ELOOP 40
+#define ENOTEMPTY 39
 #define EOVERFLOW 75
 #define ENOTSOCK 88
 #define EOPNOTSUPP 95

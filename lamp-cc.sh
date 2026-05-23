@@ -17,7 +17,17 @@ for arg in "$@"; do
 done
 
 if [[ "${is_compile}" -eq 1 ]]; then
-  exec "${LAMP_CLANG}" --target=lamp-unknown-unknown "$@"
+  compile_args=()
+  for arg in "$@"; do
+    case "${arg}" in
+      -O|-O0|-O1|-O2|-O3|-Os|-Oz|-Ofast|-fomit-frame-pointer)
+        ;;
+      *)
+        compile_args+=("${arg}")
+        ;;
+    esac
+  done
+  exec "${LAMP_CLANG}" --target=lamp-unknown-unknown -O0 -fno-omit-frame-pointer "${compile_args[@]}"
 fi
 
 out=""
@@ -63,4 +73,5 @@ exec "${LAMP_LD}" \
   "${REPO_ROOT}/build-user/start.o" \
   "${REPO_ROOT}/build-user/libsys.o" \
   "${REPO_ROOT}/build-user/libc_compat.o" \
+  "${REPO_ROOT}/build-user/compiler_rt_divmod.o" \
   "${ld_args[@]}"

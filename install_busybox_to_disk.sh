@@ -3,7 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-INSTALL_ONE="${REPO_ROOT}/user/install_user_to_disk.sh"
 
 DISK_IMG="${REPO_ROOT}/disk.img"
 ROOTFS_IMG=""
@@ -74,6 +73,9 @@ if [[ -z "${BUSYBOX_ELF}" ]]; then
   usage
   exit 1
 fi
+if [[ "${BUSYBOX_ELF}" != /* ]]; then
+  BUSYBOX_ELF="${REPO_ROOT}/${BUSYBOX_ELF}"
+fi
 if [[ ! -f "${BUSYBOX_ELF}" ]]; then
   echo "error: BusyBox ELF not found: ${BUSYBOX_ELF}" >&2
   exit 1
@@ -84,15 +86,6 @@ if [[ -z "${DEBUGFS_BIN}" ]]; then
   echo "error: debugfs not found. Please install e2fsprogs." >&2
   exit 1
 fi
-
-INSTALL_ARGS=()
-if [[ -n "${ROOTFS_IMG}" ]]; then
-  INSTALL_ARGS+=(--rootfs "${ROOTFS_IMG}")
-elif [[ -n "${DISK_IMG}" ]]; then
-  INSTALL_ARGS+=(--disk "${DISK_IMG}")
-fi
-bash "${INSTALL_ONE}" "${INSTALL_ARGS[@]}" --input "${BUSYBOX_ELF}" --dest /bin/busybox
-
 TMP_DIR=""
 FS_IMG=""
 cleanup() {
@@ -114,8 +107,42 @@ else
   dd if="${DISK_IMG}" of="${FS_IMG}" bs=512 skip="${EXT4_LBA_BASE}" status=none
 fi
 
-"${DEBUGFS_BIN}" -w -R "rm /bin/sh" "${FS_IMG}" >/dev/null 2>&1 || true
-"${DEBUGFS_BIN}" -w -R "symlink /bin/sh /bin/busybox" "${FS_IMG}" >/dev/null
+ensure_parent_dirs() {
+  local full_path="$1"
+  local parent="${full_path%/*}"
+  local cur=""
+  local rest
+  local next
+
+  if [[ -z "${parent}" || "${parent}" == "/" ]]; then
+    return
+  fi
+
+  rest="${parent#/}"
+  while [[ -n "${rest}" ]]; do
+    next="${rest%%/*}"
+    if [[ "${rest}" == *"/"* ]]; then
+      rest="${rest#*/}"
+    else
+      rest=""
+    fi
+    cur="${cur}/${next}"
+    if ! "${DEBUGFS_BIN}" -R "stat ${cur}" "${FS_IMG}" >/dev/null 2>&1; then
+      "${DEBUGFS_BIN}" -w -R "mkdir ${cur}" "${FS_IMG}" >/dev/null
+    fi
+  done
+}
+
+ensure_parent_dirs /bin/busybox
+for stale in /bin/hello /bin/echo /bin/vfork_exec /bin/cat /bin/pipe_exec /bin/pwd /bin/ls; do
+  "${DEBUGFS_BIN}" -w -R "rm ${stale}" "${FS_IMG}" >/dev/null 2>&1 || true
+done
+"${DEBUGFS_BIN}" -w -R "rm /bin/busybox" "${FS_IMG}" >/dev/null 2>&1 || true
+"${DEBUGFS_BIN}" -w -R "write ${BUSYBOX_ELF} /bin/busybox" "${FS_IMG}" >/dev/null
+for applet in sh cat clear cp echo head ls mkdir mv pwd printf rm rmdir sleep tail test true false uname wc; do
+  "${DEBUGFS_BIN}" -w -R "rm /bin/${applet}" "${FS_IMG}" >/dev/null 2>&1 || true
+  "${DEBUGFS_BIN}" -w -R "symlink /bin/${applet} /bin/busybox" "${FS_IMG}" >/dev/null
+done
 
 if [[ -z "${ROOTFS_IMG}" ]]; then
   dd if="${FS_IMG}" of="${DISK_IMG}" bs=512 seek="${EXT4_LBA_BASE}" conv=notrunc status=none

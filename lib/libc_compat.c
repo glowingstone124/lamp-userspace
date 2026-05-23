@@ -818,17 +818,6 @@ char *strftime_HHMMSS(char *buf, unsigned len, const struct tm *ptm) {
     return buf;
 }
 size_t wcslen(const int *s) { size_t n = 0; if (!s) return 0; while (s[n]) n++; return n; }
-off_t bb_copyfd_eof(int fd1, int fd2) {
-    char buf[512];
-    off_t total = 0;
-    for (;;) {
-        ssize_t n = read(fd1, buf, sizeof(buf));
-        if (n <= 0) return n < 0 ? -1 : total;
-        if (write(fd2, buf, (size_t)n) != n) return -1;
-        total += n;
-    }
-}
-
 static void out_char(char **buf, size_t *left, int fd, int *count, char c) {
     if (buf) {
         if (*left > 1) { **buf = c; (*buf)++; (*left)--; }
