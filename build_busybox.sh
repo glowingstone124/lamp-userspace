@@ -37,6 +37,9 @@ LAMP_LD="${LAMP_LD:-${LAMP_CLANG%/clang}/ld.lld}"
   -I"${SCRIPT_DIR}/include" -c "${SCRIPT_DIR}/lib/compiler_rt_divmod.c" \
   -o "${REPO_ROOT}/build-user/compiler_rt_divmod.o"
 
+perl -0pi -e 's/(p\[\Qdirec_length + 1\E\] = p\[\Qdirec_length - 1\E\];\n\s*p\[\Qdirec_length - 1\E\] = '\''l'\'';\n\s*p\[\Qdirec_length\E\] = '\''l'\'';\n)(?!\s*p\[\Qdirec_length + 2\E\] = '\''\\0'\'';)/$1\t\t\t\t\t\tp[direc_length + 2] = '\''\\0'\'';\n/' \
+  "${BUSYBOX_DIR}/coreutils/printf.c"
+
 KCONFIG_ALLCONFIG="${MIN_CONFIG}" make -C "${BUSYBOX_DIR}" allnoconfig
 while IFS= read -r line; do
   if [[ "${line}" == CONFIG_*=* ]]; then
