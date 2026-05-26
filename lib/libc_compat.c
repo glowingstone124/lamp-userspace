@@ -117,6 +117,36 @@ int inet_aton(const char *cp, struct in_addr *inp) {
     return 1;
 }
 char *inet_ntoa(struct in_addr in) { static char buf[16]; unsigned int a = ntohl(in.s_addr); snprintf(buf, sizeof(buf), "%u.%u.%u.%u", (a >> 24) & 0xff, (a >> 16) & 0xff, (a >> 8) & 0xff, a & 0xff); return buf; }
+const char *inet_ntop(int af, const void *src, char *dst, socklen_t size) {
+    if (!src || !dst || size == 0) {
+        errno = EINVAL;
+        return 0;
+    }
+    if (af == AF_INET) {
+        unsigned int a = ntohl(((const struct in_addr *)src)->s_addr);
+        int n = snprintf(dst, (size_t)size, "%u.%u.%u.%u",
+                         (a >> 24) & 0xff, (a >> 16) & 0xff,
+                         (a >> 8) & 0xff, a & 0xff);
+        if (n < 0 || (unsigned int)n >= (unsigned int)size) {
+            errno = ENOSPC;
+            return 0;
+        }
+        return dst;
+    }
+    errno = EAFNOSUPPORT;
+    return 0;
+}
+int inet_pton(int af, const char *src, void *dst) {
+    if (!src || !dst) {
+        errno = EINVAL;
+        return -1;
+    }
+    if (af == AF_INET) {
+        return inet_aton(src, (struct in_addr *)dst);
+    }
+    errno = EAFNOSUPPORT;
+    return -1;
+}
 int setsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen) { (void)fd; (void)level; (void)optname; (void)optval; (void)optlen; return 0; }
 int getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen) { (void)fd; (void)level; (void)optname; (void)optval; (void)optlen; return -1; }
 int getpeername(int fd, struct sockaddr *addr, socklen_t *len) { (void)fd; (void)addr; (void)len; return -1; }
@@ -482,6 +512,11 @@ int listen(int fd, int backlog) { return ret_errno(libsys_call6(LAMP_SYS_LISTEN,
 int accept(int fd, struct sockaddr *addr, socklen_t *len) {
     return ret_errno(libsys_call6(LAMP_SYS_ACCEPT, (uint32_t)fd, (uint32_t)(uintptr_t)addr, (uint32_t)(uintptr_t)len, 0, 0, 0));
 }
+int shutdown(int fd, int how) {
+    (void)fd;
+    (void)how;
+    return 0;
+}
 int getsockname(int fd, struct sockaddr *addr, socklen_t *len) {
     (void)fd;
     (void)addr;
@@ -489,12 +524,21 @@ int getsockname(int fd, struct sockaddr *addr, socklen_t *len) {
     errno = ENOSYS;
     return -1;
 }
-ssize_t sendto(int fd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) { (void)dest_addr; (void)addrlen; return send(fd, buf, len, flags); }
+ssize_t sendto(int fd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {
+    return (ssize_t)ret_errno(libsys_call6(LAMP_SYS_SEND, (uint32_t)fd, (uint32_t)(uintptr_t)buf,
+                                           (uint32_t)len, (uint32_t)flags,
+                                           (uint32_t)(uintptr_t)dest_addr, (uint32_t)addrlen));
+}
 ssize_t send(int fd, const void *buf, size_t len, int flags) {
     return (ssize_t)ret_errno(libsys_call6(LAMP_SYS_SEND, (uint32_t)fd, (uint32_t)(uintptr_t)buf, (uint32_t)len, (uint32_t)flags, 0, 0));
 }
 ssize_t recv(int fd, void *buf, size_t len, int flags) {
     return (ssize_t)ret_errno(libsys_call6(LAMP_SYS_RECV, (uint32_t)fd, (uint32_t)(uintptr_t)buf, (uint32_t)len, (uint32_t)flags, 0, 0));
+}
+ssize_t recvfrom(int fd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen) {
+    (void)src_addr;
+    (void)addrlen;
+    return recv(fd, buf, len, flags);
 }
 
 void *memcpy(void *dst, const void *src, size_t n) {
@@ -562,6 +606,22 @@ char *strstr(const char *h, const char *n) {
     if (nl == 0) return (char *)h;
     while (*h) { if (strncmp(h, n, nl) == 0) return (char *)h; h++; }
     return 0;
+}
+char *strtok_r(char *str, const char *delim, char **saveptr) {
+    char *s = str ? str : (saveptr ? *saveptr : 0);
+    char *end;
+    if (!s || !delim || !saveptr) return 0;
+    s += strspn(s, delim);
+    if (*s == '\0') {
+        *saveptr = s;
+        return 0;
+    }
+    end = s + strcspn(s, delim);
+    if (*end) {
+        *end++ = '\0';
+    }
+    *saveptr = end;
+    return s;
 }
 size_t strspn(const char *s, const char *accept) {
     size_t n = 0;

@@ -1,5 +1,6 @@
 #ifndef LAMP_LIBC_GLOB_H
 #define LAMP_LIBC_GLOB_H
+#include <stddef.h>
 
 typedef struct {
     size_t gl_pathc;

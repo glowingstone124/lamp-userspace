@@ -25,11 +25,13 @@ size_t strspn(const char *s, const char *accept);
 size_t strcspn(const char *s, const char *reject);
 char *strdup(const char *s);
 char *strndup(const char *s, size_t n);
+char *strtok_r(char *str, const char *delim, char **saveptr);
 char *strerror(int errnum);
 int strcoll(const char *a, const char *b);
 int strverscmp(const char *a, const char *b);
 int strcasecmp(const char *a, const char *b);
 int strncasecmp(const char *a, const char *b, size_t n);
+char *strcasestr(const char *h, const char *n);
+char *strsignal(int sig);
 
 #endif
-char *strsignal(int sig);

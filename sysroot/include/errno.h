@@ -22,6 +22,8 @@ extern int errno;
 #define EINVAL 22
 #define EMFILE 24
 #define ENOTTY 25
+#define EMSGSIZE 90
+#define ENODEV 19
 #define ENOSPC 28
 #define ESPIPE 29
 #define EROFS 30

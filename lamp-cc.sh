@@ -72,6 +72,12 @@ exec "${LAMP_LD}" \
   -o "${out}" \
   "${REPO_ROOT}/build-user/start.o" \
   "${REPO_ROOT}/build-user/libsys.o" \
-  "${REPO_ROOT}/build-user/libc_compat.o" \
+  "${REPO_ROOT}/build-user/libc_string.o" \
+  "${REPO_ROOT}/build-user/libc_stdio.o" \
+  "${REPO_ROOT}/build-user/libc_stdlib.o" \
+  "${REPO_ROOT}/build-user/libc_syscalls.o" \
+  "${REPO_ROOT}/build-user/libc_time.o" \
+  "${REPO_ROOT}/build-user/libc_signal.o" \
+  "${REPO_ROOT}/build-user/libc_misc.o" \
   "${REPO_ROOT}/build-user/compiler_rt_divmod.o" \
   "${ld_args[@]}"

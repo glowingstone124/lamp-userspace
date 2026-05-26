@@ -19,6 +19,9 @@ typedef unsigned short sa_family_t;
 #define SOCK_RAW 3
 #define SOCK_RDM 4
 #define SOCK_SEQPACKET 5
+#define SHUT_RD 0
+#define SHUT_WR 1
+#define SHUT_RDWR 2
 #define INADDR_ANY ((unsigned int)0x00000000)
 #define INADDR_NONE ((unsigned int)0xffffffff)
 #define INADDR_LOOPBACK ((unsigned int)0x7f000001)
@@ -49,9 +52,11 @@ int bind(int fd, const struct sockaddr *addr, socklen_t len);
 int listen(int fd, int backlog);
 int accept(int fd, struct sockaddr *addr, socklen_t *len);
 int getsockname(int fd, struct sockaddr *addr, socklen_t *len);
+int shutdown(int fd, int how);
 ssize_t send(int fd, const void *buf, size_t len, int flags);
 ssize_t sendto(int fd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);
 ssize_t recv(int fd, void *buf, size_t len, int flags);
+ssize_t recvfrom(int fd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
 int setsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen);
 int getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
 int getpeername(int fd, struct sockaddr *addr, socklen_t *len);
