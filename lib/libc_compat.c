@@ -463,6 +463,9 @@ int sigaction(int sig, const struct sigaction *act, struct sigaction *oldact) {
         la.flags = (uint32_t)act->sa_flags;
         la.mask = act->sa_mask;
         la.restorer = (uint32_t)(uintptr_t)act->sa_restorer;
+        if (la.handler > LAMP_SIG_IGN && la.restorer == 0u) {
+            la.restorer = (uint32_t)(uintptr_t)&__lamp_signal_restorer;
+        }
         lap = &la;
     }
     if (libsys_sigaction((uint32_t)sig, lap, oldp) < 0) {

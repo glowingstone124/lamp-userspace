@@ -21,5 +21,10 @@ bash user/install_busybox_to_disk.sh --input busybox-1.37.0/busybox
 The installer writes `/bin/busybox` and creates `/bin/sh -> /bin/busybox`.
 Kernel init starts `/bin/sh` directly after boot and respawns it if the shell exits.
 
+Signal delivery regression source lives at `tests/signal_delivery.c`. After the
+runtime objects have been built, compile it with `lamp-cc.sh`; the test covers a
+blocked pending signal, delivery after unmask, handler return through
+`sigreturn`, and repeated delivery.
+
 Networking applet notes, including the current `wget` statusbar setting and NAT
 test flow, are documented in `../docs/networking.md`.

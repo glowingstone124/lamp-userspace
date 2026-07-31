@@ -3,6 +3,35 @@
 
 int32_t libsys_errno;
 
+/*
+ * Signal handlers return through the VM's separate call stack.  The kernel
+ * places this address there and leaves the signal-frame pointer in r30.
+ * A successful sigreturn rewrites the active IRQ return frame, so execution
+ * resumes at the interrupted instruction instead of after INTI below.
+ */
+__asm__(
+    ".text\n"
+    ".globl __lamp_signal_restorer\n"
+    ".type __lamp_signal_restorer,@function\n"
+    "__lamp_signal_restorer:\n"
+    "  mov r1, r30\n"
+    "  movi r0, 51\n"
+    "  movi r2, 0\n"
+    "  movi r3, 0\n"
+    "  movi r4, 0\n"
+    "  movi r5, 0\n"
+    "  movi r6, 0\n"
+    "  movi r8, 0\n"
+    "  inti 0x80\n"
+    "  movi r0, 3\n"
+    "  movi r1, 127\n"
+    "  movi r8, 0\n"
+    "  inti 0x80\n"
+    ".Llamp_signal_restorer_halt:\n"
+    "  rjmp .Llamp_signal_restorer_halt\n"
+    ".size __lamp_signal_restorer, .-__lamp_signal_restorer\n"
+);
+
 int32_t libsys_call6(uint32_t nr, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5) {
     volatile uint32_t abi[LAMP_SYSCALL_ABI_WORDS];
     uint32_t abi_addr = (uint32_t)(uintptr_t)&abi[0];

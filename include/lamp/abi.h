@@ -54,7 +54,8 @@ enum {
     LAMP_SYS_RMDIR = 47u,
     LAMP_SYS_LINK = 48u,
     LAMP_SYS_SYMLINK = 49u,
-    LAMP_SYS_READLINK = 50u
+    LAMP_SYS_READLINK = 50u,
+    LAMP_SYS_SIGRETURN = 51u
 };
 
 enum {

@@ -28,6 +28,7 @@ int32_t libsys_ioctl(int32_t fd, uint32_t request, void *arg);
 int32_t libsys_sigaction(uint32_t sig, const lamp_sigaction_t *act, lamp_sigaction_t *oldact);
 int32_t libsys_sigprocmask(uint32_t how, const uint32_t *set, uint32_t *oldset);
 int32_t libsys_kill(int32_t pid, uint32_t sig);
+void __lamp_signal_restorer(void);
 int32_t libsys_umask(uint32_t mask);
 int32_t libsys_rename(const char *oldpath, const char *newpath);
 int32_t libsys_unlink(const char *path);
