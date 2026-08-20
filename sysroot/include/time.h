@@ -25,6 +25,7 @@ struct tm {
 
 int clock_gettime(int clock_id, struct timespec *ts);
 int clock_getres(int clock_id, struct timespec *ts);
+int clock_settime(int clock_id, const struct timespec *ts);
 int nanosleep(const struct timespec *req, struct timespec *rem);
 time_t time(time_t *tloc);
 struct tm *localtime_r(const time_t *timep, struct tm *result);
@@ -32,6 +33,7 @@ struct tm *localtime(const time_t *timep);
 char *ctime(const time_t *timep);
 size_t strftime(char *s, size_t max, const char *format, const struct tm *tm);
 time_t mktime(struct tm *tm);
+char *strptime(const char *s, const char *format, struct tm *result);
 void tzset(void);
 
 #endif

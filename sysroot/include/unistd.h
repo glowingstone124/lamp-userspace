@@ -80,3 +80,4 @@ int setpgid(pid_t pid, pid_t pgid);
 int setpgrp(void);
 pid_t tcgetpgrp(int fd);
 int ftruncate(int fd, off_t length);
+int fsync(int fd);

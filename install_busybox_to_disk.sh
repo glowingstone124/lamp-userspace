@@ -134,12 +134,16 @@ ensure_parent_dirs() {
 }
 
 ensure_parent_dirs /bin/busybox
-for stale in /bin/hello /bin/echo /bin/vfork_exec /bin/cat /bin/pipe_exec /bin/pwd /bin/ls /bin/wget /bin/nc /bin/nslookup /bin/ping; do
+for stale in /bin/hello /bin/echo /bin/vfork_exec /bin/cat /bin/pipe_exec /bin/pwd /bin/ls /bin/free /bin/uptime /bin/wget /bin/nc /bin/nslookup /bin/ping; do
   "${DEBUGFS_BIN}" -w -R "rm ${stale}" "${FS_IMG}" >/dev/null 2>&1 || true
 done
 "${DEBUGFS_BIN}" -w -R "rm /bin/busybox" "${FS_IMG}" >/dev/null 2>&1 || true
 "${DEBUGFS_BIN}" -w -R "write ${BUSYBOX_ELF} /bin/busybox" "${FS_IMG}" >/dev/null
-for applet in sh cat clear cp echo head ls mkdir mv nc nslookup ping pwd printf rm rmdir sleep tail test true false uname wc wget; do
+for applet in \
+  sh basename cat clear cmp cp cut date dd diff dirname du echo env expr false find \
+  free head kill ls md5sum mkdir mv nc nl nproc nslookup paste ping printenv \
+  printf ps pwd readlink rm rmdir sha1sum sha256sum sha3sum sha512sum sleep sort \
+  strings tail tee test tr true tty uname uptime wc wget which xargs yes; do
   "${DEBUGFS_BIN}" -w -R "rm /bin/${applet}" "${FS_IMG}" >/dev/null 2>&1 || true
   "${DEBUGFS_BIN}" -w -R "symlink /bin/${applet} /bin/busybox" "${FS_IMG}" >/dev/null
 done

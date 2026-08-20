@@ -18,7 +18,8 @@ LAMP_LD="${LAMP_LD:-${LAMP_CLANG%/clang}/ld.lld}"
 
 "${LAMP_CLANG}" --target=lamp-unknown-unknown \
   -ffreestanding -fno-builtin -fno-stack-protector -O0 \
-  -I"${SCRIPT_DIR}/include" -c "${SCRIPT_DIR}/crt/start.c" \
+-I"${SCRIPT_DIR}/sysroot/include" -I"${SCRIPT_DIR}/include" \
+-c "${SCRIPT_DIR}/crt/start.c" \
   -o "${REPO_ROOT}/build-user/start.o"
 
 "${LAMP_CLANG}" --target=lamp-unknown-unknown \
@@ -43,6 +44,10 @@ perl -0pi -e 's/(p\[\Qdirec_length + 1\E\] = p\[\Qdirec_length - 1\E\];\n\s*p\[\
   "${BUSYBOX_DIR}/coreutils/printf.c"
 perl -0pi -e 's/^#define USE_LIBC_RESOLV 1$/#define USE_LIBC_RESOLV 0/m' \
   "${BUSYBOX_DIR}/networking/nslookup.c"
+perl -0pi -e 's@#ifdef __linux__\n# include <sys/sysinfo\.h>\n#endif@#include <sys/sysinfo.h>@' \
+  "${BUSYBOX_DIR}/procps/free.c"
+perl -0pi -e 's@#ifdef __linux__\n# include <sys/sysinfo\.h>\n#endif@#include <sys/sysinfo.h>@' \
+  "${BUSYBOX_DIR}/procps/uptime.c"
 
 KCONFIG_ALLCONFIG="${MIN_CONFIG}" make -C "${BUSYBOX_DIR}" allnoconfig
 while IFS= read -r line; do

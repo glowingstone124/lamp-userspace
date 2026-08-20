@@ -75,6 +75,35 @@ char *strstr(const char *h, const char *n) {
     while (*h) { if (strncmp(h, n, nl) == 0) return (char *)h; h++; }
     return 0;
 }
+char *strpbrk(const char *s, const char *accept) {
+    while (s && *s) {
+        if (strchr(accept, *s)) return (char *)s;
+        s++;
+    }
+    return 0;
+}
+void *memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen) {
+    const unsigned char *hay = haystack;
+    const unsigned char *ned = needle;
+    if (needlelen == 0) return (void *)haystack;
+    if (!haystack || !needle || needlelen > haystacklen) return 0;
+    for (size_t i = 0; i + needlelen <= haystacklen; i++) {
+        if (memcmp(hay + i, ned, needlelen) == 0) return (void *)(hay + i);
+    }
+    return 0;
+}
+char *strsep(char **stringp, const char *delim) {
+    char *start;
+    char *end;
+    if (!stringp || !*stringp || !delim) return 0;
+    start = *stringp;
+    end = start + strcspn(start, delim);
+    if (*end) {
+        *end++ = '\0';
+    }
+    *stringp = end;
+    return start;
+}
 char *strtok_r(char *str, const char *delim, char **saveptr) {
     char *s = str ? str : (saveptr ? *saveptr : 0);
     char *end;

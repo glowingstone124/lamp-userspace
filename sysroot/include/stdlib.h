@@ -17,6 +17,8 @@ void free(void *ptr);
 void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void exit(int status) __attribute__((noreturn));
+void abort(void) __attribute__((noreturn));
+int atexit(void (*function)(void));
 int atoi(const char *s);
 long strtol(const char *nptr, char **endptr, int base);
 unsigned long strtoul(const char *nptr, char **endptr, int base);
@@ -28,6 +30,8 @@ int setenv(const char *name, const char *value, int overwrite);
 int putenv(char *string);
 int unsetenv(const char *name);
 int clearenv(void);
+void *bsearch(const void *key, const void *base, size_t nmemb, size_t size,
+              int (*compar)(const void *, const void *));
 int mkstemp(char *template);
 char *realpath(const char *path, char *resolved_path);
 void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));

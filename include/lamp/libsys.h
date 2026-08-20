@@ -40,5 +40,6 @@ int32_t libsys_readlink(const char *path, char *buf, uint32_t size);
 int32_t libsys_execve(const char *path, const char *const argv[], const char *const envp[]);
 int32_t libsys_vfork(void);
 int32_t libsys_exit(int32_t code);
+int32_t libsys_sysinfo(void *info);
 
 #endif

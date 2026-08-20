@@ -1,4 +1,5 @@
 #include <lamp/libsys.h>
+#include <unistd.h>
 
 extern int main(int argc, char **argv, char **envp);
 
@@ -26,6 +27,7 @@ int start_c(uint32_t sp) {
     argc = *(volatile int32_t *)(uintptr_t)sp;
     argv = (char **)(uintptr_t)(sp + 4u);
     envp = argv + (uint32_t)argc + 1u;
+    environ = envp;
 
     code = main(argc, argv, envp);
     (void)libsys_exit(code);

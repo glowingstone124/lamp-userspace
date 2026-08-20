@@ -163,9 +163,6 @@ void endgrent(void) {}
 int fnmatch(const char *pattern, const char *string, int flags) { (void)flags; return strcmp(pattern, string) == 0 ? 0 : FNM_NOMATCH; }
 int glob(const char *pattern, int flags, int (*errfunc)(const char *, int), glob_t *pglob) { (void)pattern; (void)flags; (void)errfunc; if (pglob) { pglob->gl_pathc = 0; pglob->gl_pathv = 0; pglob->gl_offs = 0; } return GLOB_NOMATCH; }
 void globfree(glob_t *pglob) { (void)pglob; }
-int regcomp(regex_t *preg, const char *regex, int cflags) { (void)preg; (void)regex; (void)cflags; return 0; }
-int regexec(const regex_t *preg, const char *string, unsigned long nmatch, regmatch_t pmatch[], int eflags) { (void)preg; (void)string; (void)nmatch; (void)pmatch; (void)eflags; return REG_NOMATCH; }
-void regfree(regex_t *preg) { (void)preg; }
 
 /* ---- getopt ---- */
 char *optarg; int optind = 1; int opterr = 1; int optopt;

@@ -1131,7 +1131,7 @@ int uname(struct utsname *buf) {
     strcpy(buf->machine, "lamp");
     return 0;
 }
-int sysinfo(struct sysinfo *info) { if (info) memset(info, 0, sizeof(*info)); return 0; }
+int sysinfo(struct sysinfo *info) { return ret_errno(libsys_sysinfo(info)); }
 int statfs(const char *path, struct statfs *buf) { (void)path; if (buf) memset(buf, 0, sizeof(*buf)); return 0; }
 int getrlimit(int resource, struct rlimit *rlim) { (void)resource; if (rlim) { rlim->rlim_cur = 32; rlim->rlim_max = 32; } return 0; }
 int setrlimit(int resource, const struct rlimit *rlim) { (void)resource; (void)rlim; return 0; }
@@ -1169,9 +1169,6 @@ int utimes(const char *path, const struct timeval times[2]) { (void)path; (void)
 int fnmatch(const char *pattern, const char *string, int flags) { (void)flags; return strcmp(pattern, string) == 0 ? 0 : FNM_NOMATCH; }
 int glob(const char *pattern, int flags, int (*errfunc)(const char *epath, int eerrno), glob_t *pglob) { (void)pattern; (void)flags; (void)errfunc; if (pglob) { pglob->gl_pathc = 0; pglob->gl_pathv = 0; pglob->gl_offs = 0; } return GLOB_NOMATCH; }
 void globfree(glob_t *pglob) { (void)pglob; }
-int regcomp(regex_t *preg, const char *regex, int cflags) { (void)preg; (void)regex; (void)cflags; return 0; }
-int regexec(const regex_t *preg, const char *string, unsigned long nmatch, regmatch_t pmatch[], int eflags) { (void)preg; (void)string; (void)nmatch; (void)pmatch; (void)eflags; return REG_NOMATCH; }
-void regfree(regex_t *preg) { (void)preg; }
 char *setlocale(int category, const char *locale) { (void)category; (void)locale; return "C"; }
 unsigned short htons(unsigned short x) { return (unsigned short)((x << 8) | (x >> 8)); }
 unsigned short ntohs(unsigned short x) { return htons(x); }

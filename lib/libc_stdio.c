@@ -9,11 +9,11 @@
 
 #include <lamp/libsys.h>
 
-struct FILE { int fd; int eof; int err; };
+struct FILE { int fd; int eof; int err; int pushback; };
 
-static FILE g_stdin  = { 0, 0, 0 };
-static FILE g_stdout = { 1, 0, 0 };
-static FILE g_stderr = { 2, 0, 0 };
+static FILE g_stdin  = { 0, 0, 0, -1 };
+static FILE g_stdout = { 1, 0, 0, -1 };
+static FILE g_stderr = { 2, 0, 0, -1 };
 FILE *stdin  = &g_stdin;
 FILE *stdout = &g_stdout;
 FILE *stderr = &g_stderr;
@@ -21,13 +21,18 @@ FILE *stderr = &g_stderr;
 static int file_fd(FILE *stream) { return stream ? stream->fd : 1; }
 
 int fflush(FILE *stream) { (void)stream; return 0; }
+void setbuf(FILE *stream, char *buf) { (void)stream; (void)buf; }
+int setvbuf(FILE *stream, char *buf, int mode, size_t size) {
+    (void)stream; (void)buf; (void)mode; (void)size;
+    return 0;
+}
 int fileno(FILE *stream) { return file_fd(stream); }
 int fileno_unlocked(FILE *stream) { return fileno(stream); }
 
 FILE *fdopen(int fd, const char *mode) {
     (void)mode;
     FILE *f = malloc(sizeof(FILE));
-    if (f) { f->fd = fd; f->eof = 0; f->err = 0; }
+    if (f) { f->fd = fd; f->eof = 0; f->err = 0; f->pushback = -1; }
     return f;
 }
 
@@ -44,7 +49,7 @@ FILE *freopen(const char *path, const char *mode, FILE *stream) {
     if (mode && mode[0] == 'w') flags = O_WRONLY | O_CREAT | O_TRUNC;
     fd = open(path, flags, 0666);
     if (fd < 0) return 0;
-    close(stream->fd); stream->fd = fd; stream->eof = 0; stream->err = 0;
+    close(stream->fd); stream->fd = fd; stream->eof = 0; stream->err = 0; stream->pushback = -1;
     return stream;
 }
 
@@ -54,12 +59,42 @@ int fclose(FILE *stream) {
     return close(fd);
 }
 
-int fseeko(FILE *stream, off_t offset, int whence) { return lseek(file_fd(stream), offset, whence) < 0 ? -1 : 0; }
+int fseeko(FILE *stream, off_t offset, int whence) {
+    off_t adjusted = offset;
+    if (stream && stream->pushback >= 0 && whence == SEEK_CUR) adjusted--;
+    if (lseek(file_fd(stream), adjusted, whence) < 0) return -1;
+    if (stream) { stream->pushback = -1; stream->eof = 0; }
+    return 0;
+}
+int fseek(FILE *stream, long offset, int whence) { return fseeko(stream, (off_t)offset, whence); }
+long ftell(FILE *stream) {
+    off_t pos = lseek(file_fd(stream), 0, SEEK_CUR);
+    if (pos < 0) return -1;
+    if (stream && stream->pushback >= 0) pos--;
+    return (long)pos;
+}
+void rewind(FILE *stream) { (void)fseeko(stream, 0, SEEK_SET); clearerr(stream); }
 
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
-    ssize_t n = read(file_fd(stream), ptr, size * nmemb);
-    if (n <= 0) { if (stream) stream->eof = 1; return 0; }
-    return (size_t)n / size;
+    size_t total = size * nmemb;
+    size_t done = 0;
+    unsigned char *out = ptr;
+    if (size == 0 || nmemb == 0) return 0;
+    while (done < total) {
+        int c;
+        if (stream && stream->pushback >= 0) {
+            c = stream->pushback;
+            stream->pushback = -1;
+            out[done++] = (unsigned char)c;
+            continue;
+        }
+        {
+            ssize_t n = read(file_fd(stream), out + done, total - done);
+            if (n <= 0) { if (stream) stream->eof = 1; break; }
+            done += (size_t)n;
+        }
+    }
+    return done / size;
 }
 
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
@@ -107,7 +142,23 @@ int putc_unlocked(int c, FILE *stream) { return fputc(c, stream); }
 int putchar(int c) { return fputc(c, stdout); }
 int putchar_unlocked(int c) { return fputc(c, stdout); }
 
-int fgetc(FILE *stream) { unsigned char ch; return read(file_fd(stream), &ch, 1) == 1 ? ch : EOF; }
+int fgetc(FILE *stream) {
+    unsigned char ch;
+    if (stream && stream->pushback >= 0) {
+        int c = stream->pushback;
+        stream->pushback = -1;
+        return c;
+    }
+    if (read(file_fd(stream), &ch, 1) == 1) return ch;
+    if (stream) stream->eof = 1;
+    return EOF;
+}
+int ungetc(int c, FILE *stream) {
+    if (!stream || c == EOF || stream->pushback >= 0) return EOF;
+    stream->pushback = (unsigned char)c;
+    stream->eof = 0;
+    return (unsigned char)c;
+}
 int getc(FILE *stream) { return fgetc(stream); }
 int getc_unlocked(FILE *stream) { return fgetc(stream); }
 int getchar(void) { return fgetc(stdin); }
@@ -269,9 +320,193 @@ int vsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
 
 int snprintf(char *str, size_t size, const char *fmt, ...) { va_list ap; va_start(ap, fmt); int n = vsnprintf(str, size, fmt, ap); va_end(ap); return n; }
 int sprintf(char *str, const char *fmt, ...) { va_list ap; va_start(ap, fmt); int n = vsnprintf(str, 0xffffffffu, fmt, ap); va_end(ap); return n; }
-int sscanf(const char *str, const char *fmt, ...) { (void)str; (void)fmt; return 0; }
+static int scan_digit(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+static int scan_unsigned(const char **input, int width, int base,
+                         unsigned long long *value_out) {
+    const char *p = *input;
+    unsigned long long value = 0;
+    int consumed = 0;
+
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' ||
+           *p == '\f' || *p == '\v') {
+        p++;
+    }
+    if (*p == '+') {
+        p++;
+    }
+    if (base == 0) {
+        base = 10;
+        if (*p == '0') {
+            base = 8;
+            if (p[1] == 'x' || p[1] == 'X') {
+                base = 16;
+                p += 2;
+            }
+        }
+    } else if (base == 16 && p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+        p += 2;
+    }
+    while (*p && (width == 0 || consumed < width)) {
+        int digit = scan_digit(*p);
+        if (digit < 0 || digit >= base) break;
+        value = value * (unsigned)base + (unsigned)digit;
+        p++;
+        consumed++;
+    }
+    if (consumed == 0) return 0;
+    *input = p;
+    *value_out = value;
+    return 1;
+}
+
+int sscanf(const char *str, const char *fmt, ...) {
+    const char *input = str;
+    int assigned = 0;
+    va_list ap;
+
+    if (!str || !fmt) return 0;
+    va_start(ap, fmt);
+    while (*fmt) {
+        int suppress = 0;
+        int width = 0;
+        int length = 0;
+        char spec;
+
+        if (*fmt == ' ' || *fmt == '\t' || *fmt == '\n' || *fmt == '\r' ||
+            *fmt == '\f' || *fmt == '\v') {
+            while (*fmt == ' ' || *fmt == '\t' || *fmt == '\n' || *fmt == '\r' ||
+                   *fmt == '\f' || *fmt == '\v') {
+                fmt++;
+            }
+            while (*input == ' ' || *input == '\t' || *input == '\n' ||
+                   *input == '\r' || *input == '\f' || *input == '\v') {
+                input++;
+            }
+            continue;
+        }
+        if (*fmt != '%') {
+            if (*input != *fmt) break;
+            input++;
+            fmt++;
+            continue;
+        }
+        fmt++;
+        if (*fmt == '*') {
+            suppress = 1;
+            fmt++;
+        }
+        while (*fmt >= '0' && *fmt <= '9') {
+            width = width * 10 + (*fmt++ - '0');
+        }
+        if (*fmt == 'l') {
+            length = 1;
+            fmt++;
+            if (*fmt == 'l') {
+                length = 2;
+                fmt++;
+            }
+        }
+        spec = *fmt++;
+        if (spec == '%') {
+            if (*input != '%') break;
+            input++;
+            continue;
+        }
+        if (spec == 'c') {
+            int count = width ? width : 1;
+            char *out = suppress ? 0 : va_arg(ap, char *);
+            for (int i = 0; i < count; i++) {
+                if (input[i] == '\0') goto done;
+                if (out) out[i] = input[i];
+            }
+            input += count;
+            if (!suppress) assigned++;
+            continue;
+        }
+        if (spec == 's') {
+            int count = 0;
+            char *out = suppress ? 0 : va_arg(ap, char *);
+            while (*input == ' ' || *input == '\t' || *input == '\n' ||
+                   *input == '\r' || *input == '\f' || *input == '\v') {
+                input++;
+            }
+            while (*input && (*input != ' ' && *input != '\t' && *input != '\n' &&
+                              *input != '\r' && *input != '\f' && *input != '\v') &&
+                   (width == 0 || count < width)) {
+                if (out) out[count] = *input;
+                input++;
+                count++;
+            }
+            if (count == 0) break;
+            if (out) out[count] = '\0';
+            if (!suppress) assigned++;
+            continue;
+        }
+        if (spec == 'n') {
+            if (!suppress) {
+                if (length == 2) *va_arg(ap, long long *) = (long long)(input - str);
+                else if (length == 1) *va_arg(ap, long *) = (long)(input - str);
+                else *va_arg(ap, int *) = (int)(input - str);
+            }
+            continue;
+        }
+        if (spec == 'd' || spec == 'i' || spec == 'u' || spec == 'x' ||
+            spec == 'X' || spec == 'o' || spec == 'p') {
+            unsigned long long value;
+            int negative = 0;
+            int base = spec == 'o' ? 8 : ((spec == 'x' || spec == 'X' || spec == 'p') ? 16 :
+                                           (spec == 'i' ? 0 : 10));
+            while (*input == ' ' || *input == '\t' || *input == '\n' ||
+                   *input == '\r' || *input == '\f' || *input == '\v') {
+                input++;
+            }
+            if ((spec == 'd' || spec == 'i') && (*input == '-' || *input == '+')) {
+                negative = *input == '-';
+                input++;
+            }
+            if (!scan_unsigned(&input, width, base, &value)) break;
+            if (negative) value = (unsigned long long)-(long long)value;
+            if (!suppress) {
+                if (spec == 'd' || spec == 'i') {
+                    if (length == 2) *va_arg(ap, long long *) = (long long)value;
+                    else if (length == 1) *va_arg(ap, long *) = (long)value;
+                    else *va_arg(ap, int *) = (int)value;
+                } else if (spec == 'p') {
+                    *va_arg(ap, void **) = (void *)(uintptr_t)value;
+                } else {
+                    if (length == 2) *va_arg(ap, unsigned long long *) = value;
+                    else if (length == 1) *va_arg(ap, unsigned long *) = (unsigned long)value;
+                    else *va_arg(ap, unsigned *) = (unsigned)value;
+                }
+                assigned++;
+            }
+            continue;
+        }
+        break;
+    }
+done:
+    va_end(ap);
+    return assigned;
+}
 int dprintf(int fd, const char *fmt, ...) { char buf[512]; va_list ap; va_start(ap, fmt); int n = vsnprintf(buf, sizeof(buf), fmt, ap); va_end(ap); (void)write(fd, buf, strlen(buf)); return n; }
 int vfprintf(FILE *stream, const char *fmt, va_list ap) { char buf[512]; int n = vsnprintf(buf, sizeof(buf), fmt, ap); (void)write(file_fd(stream), buf, strlen(buf)); return n; }
 int fprintf(FILE *stream, const char *fmt, ...) { va_list ap; va_start(ap, fmt); int n = vfprintf(stream, fmt, ap); va_end(ap); return n; }
 int printf(const char *fmt, ...) { va_list ap; va_start(ap, fmt); int n = vfprintf(stdout, fmt, ap); va_end(ap); return n; }
-int vasprintf(char **strp, const char *fmt, va_list ap) { int n = vsnprintf(0, 0, fmt, ap); if (n < 0) return -1; *strp = malloc((size_t)(n + 1)); if (!*strp) return -1; return vsnprintf(*strp, (size_t)(n + 1), fmt, ap); }
+int vasprintf(char **strp, const char *fmt, va_list ap) {
+    va_list copy;
+    int n;
+    if (!strp) return -1;
+    va_copy(copy, ap);
+    n = vsnprintf(0, 0, fmt, copy);
+    va_end(copy);
+    if (n < 0) return -1;
+    *strp = malloc((size_t)(n + 1));
+    if (!*strp) return -1;
+    return vsnprintf(*strp, (size_t)(n + 1), fmt, ap);
+}

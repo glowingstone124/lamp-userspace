@@ -161,6 +161,10 @@ int chroot(const char *path) { (void)path; errno = ENOSYS; return -1; }
 int fchdir(int fd) { (void)fd; return 0; }
 int mkstemp(char *template) { (void)template; errno = ENOSYS; return -1; }
 int ftruncate(int fd, off_t length) { (void)fd; (void)length; return 0; }
+int fsync(int fd) {
+    if (fd < 0) { errno = EBADF; return -1; }
+    return 0;
+}
 char *realpath(const char *path, char *resolved_path) {
     if (!path || !resolved_path) { errno = EINVAL; return 0; }
     strcpy(resolved_path, path); return resolved_path;
@@ -177,7 +181,7 @@ void *mmap(void *addr, unsigned long len, int prot, int flags, int fd, long off)
 int munmap(void *addr, unsigned long len) { (void)len; free(addr); return 0; }
 int sched_getaffinity(pid_t pid, size_t cpusetsize, void *mask) { (void)pid; if (cpusetsize >= sizeof(unsigned long) && mask) { memset(mask, 0, cpusetsize); *(unsigned long *)mask = 1; return 0; } errno = EINVAL; return -1; }
 int statfs(const char *path, struct statfs *buf) { (void)path; if (buf) memset(buf, 0, sizeof(*buf)); return 0; }
-int sysinfo(struct sysinfo *info) { if (info) memset(info, 0, sizeof(*info)); return 0; }
+int sysinfo(struct sysinfo *info) { return ret_errno(libsys_sysinfo(info)); }
 int uname(struct utsname *buf) {
     if (!buf) { errno = EFAULT; return -1; }
     strcpy(buf->sysname, "Octans"); strcpy(buf->nodename, "lamp-VirtualMachine");

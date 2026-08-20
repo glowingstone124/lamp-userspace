@@ -13,6 +13,9 @@ extern FILE *stderr;
 
 #define EOF (-1)
 #define BUFSIZ 4096
+#define _IONBF 0
+#define _IOLBF 1
+#define _IOFBF 2
 
 int printf(const char *fmt, ...);
 int fprintf(FILE *stream, const char *fmt, ...);
@@ -32,11 +35,14 @@ int putc_unlocked(int c, FILE *stream);
 int putchar(int c);
 int putchar_unlocked(int c);
 int fgetc(FILE *stream);
+int ungetc(int c, FILE *stream);
 int getc(FILE *stream);
 int getc_unlocked(FILE *stream);
 int getchar(void);
 int getchar_unlocked(void);
 int fflush(FILE *stream);
+void setbuf(FILE *stream, char *buf);
+int setvbuf(FILE *stream, char *buf, int mode, size_t size);
 FILE *fopen(const char *path, const char *mode);
 FILE *fdopen(int fd, const char *mode);
 FILE *freopen(const char *path, const char *mode, FILE *stream);
@@ -44,6 +50,9 @@ int fclose(FILE *stream);
 int fileno(FILE *stream);
 int fileno_unlocked(FILE *stream);
 int fseeko(FILE *stream, off_t offset, int whence);
+int fseek(FILE *stream, long offset, int whence);
+long ftell(FILE *stream);
+void rewind(FILE *stream);
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 char *fgets(char *s, int size, FILE *stream);

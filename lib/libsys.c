@@ -241,3 +241,7 @@ int32_t libsys_vfork(void) {
 int32_t libsys_exit(int32_t code) {
     return libsys_call6(LAMP_SYS_EXIT, (uint32_t)code, 0u, 0u, 0u, 0u, 0u);
 }
+
+int32_t libsys_sysinfo(void *info) {
+    return libsys_call6(LAMP_SYS_SYSINFO, (uint32_t)(uintptr_t)info, 0u, 0u, 0u, 0u, 0u);
+}

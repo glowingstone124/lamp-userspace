@@ -78,6 +78,7 @@ exec "${LAMP_LD}" \
   "${REPO_ROOT}/build-user/libc_syscalls.o" \
   "${REPO_ROOT}/build-user/libc_time.o" \
   "${REPO_ROOT}/build-user/libc_signal.o" \
+  "${REPO_ROOT}/build-user/libc_regex.o" \
   "${REPO_ROOT}/build-user/libc_misc.o" \
   "${REPO_ROOT}/build-user/compiler_rt_divmod.o" \
   "${ld_args[@]}"
