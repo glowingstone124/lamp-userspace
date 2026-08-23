@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LAMP_LD="${LAMP_LD:-${LAMP_CLANG%/clang}/ld.lld}"
 
+# Optimization levels pass through to the compiler; callers that need the
+# conservative baseline can still request -O0 explicitly.
 is_compile=0
 for arg in "$@"; do
   case "${arg}" in
@@ -17,17 +19,7 @@ for arg in "$@"; do
 done
 
 if [[ "${is_compile}" -eq 1 ]]; then
-  compile_args=()
-  for arg in "$@"; do
-    case "${arg}" in
-      -O|-O0|-O1|-O2|-O3|-Os|-Oz|-Ofast|-fomit-frame-pointer)
-        ;;
-      *)
-        compile_args+=("${arg}")
-        ;;
-    esac
-  done
-  exec "${LAMP_CLANG}" --target=lamp-unknown-unknown -O0 -fno-omit-frame-pointer "${compile_args[@]}"
+  exec "${LAMP_CLANG}" --target=lamp-unknown-unknown -fno-omit-frame-pointer "$@"
 fi
 
 out=""
@@ -81,4 +73,5 @@ exec "${LAMP_LD}" \
   "${REPO_ROOT}/build-user/libc_regex.o" \
   "${REPO_ROOT}/build-user/libc_misc.o" \
   "${REPO_ROOT}/build-user/compiler_rt_divmod.o" \
+  "${REPO_ROOT}/build-user/compiler_rt_softfloat.o" \
   "${ld_args[@]}"
