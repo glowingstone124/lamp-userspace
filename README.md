@@ -31,9 +31,10 @@ test flow, are documented in `../docs/networking.md`.
 
 ## CoreMark
 
-CoreMark is kept as the top-level `../coremark` submodule so the EEMBC benchmark
-sources stay unmodified.  Build the LAMP port, then install the resulting static
-ELF into the ext4 guest rootfs:
+CoreMark is vendored at the top-level `../coremark` directory so the EEMBC
+benchmark sources stay unmodified and are available without initializing another
+submodule. Build the LAMP port, then install the resulting static ELF into the
+ext4 guest rootfs:
 
 ```bash
 export LAMP_CLANG=/path/to/lamp-llvm/bin/clang
@@ -52,8 +53,22 @@ and iteration count at runtime:
 
 The LAMP port uses its paced monotonic clock and CoreMark's integer-time mode,
 because the guest ISA provides binary32 rather than double-precision floating
-point.  A valid run still prints the standard CRC validation lines; use a run of
+point. A valid run still prints the standard CRC validation lines; use a run of
 at least ten seconds for reportable results as required by EEMBC.
 
-CoreMark builds at `-O2` by default.  Set `COREMARK_OPT_LEVEL=-O0` (or another
+CoreMark builds at `-O2` by default. Set `COREMARK_OPT_LEVEL=-O0` (or another
 supported Clang optimization level) only when comparing compiler behavior.
+
+## VM panic test
+
+The deliberately destructive `vm-panic-test` issues an unaligned `LOAD16`, which
+exercises the VM panic path and stops the VM. Build and install it only when a
+restart is expected:
+
+```bash
+export LAMP_CLANG=/path/to/lamp-llvm/bin/clang
+bash user/build_panic_test.sh
+bash user/install_panic_test_to_disk.sh --input build-user/vm-panic-test/vm-panic-test
+```
+
+Run `/bin/vm-panic-test` in the guest to trigger the panic.
